@@ -41,12 +41,6 @@ The look of the app (the interface) is kept private and is **not** part of this 
 - **Do not use it if you are unsure about your opponent being a cheater.** Abandoning an ordinary game session will be considered a defeat.
 - The program works locally on your PC without requesting your account or any other private data.
 
-## Open source
-
-It is an open source project. Feel free to read, learn and develop from the code.
-
-The design of the application (interface) is confidential and **not** included in this repository.
-
 ## Credits
 
 Created by **Splixy**.
@@ -65,4 +59,4 @@ The look of the app (the interface) is kept private and is **not** part of this 
 
 ## Credits
 
-Made by **Splixy**.
+Made by **Splixy AKA Fares**.
