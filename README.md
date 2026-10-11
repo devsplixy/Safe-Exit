@@ -35,11 +35,14 @@ If you match up against a cheater online, Safe Exit lets you get out of the game
 - **Do not use it if you are unsure about your opponent being a cheater.** Abandoning an ordinary game session will be considered a defeat.
 - The program works locally on your PC without requesting your account or any other private data.
 
-## Open source
+## Source Available
 
-This project is open source. You are welcome to read the code, learn from it, and build on it.
+The code for this project is publicly available. You are welcome to read the code, learn from it, and build on it for **personal, non-commercial use only**. 
+
+If you use or modify this code, you **must** give credit to the original author. You are strictly prohibited from selling or monetizing this software in any way.
 
 The look of the app (the interface) is kept private and is **not** part of this repository. Everything else is included.
+
 
 ## Credits
 
