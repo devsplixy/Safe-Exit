@@ -1,6 +1,6 @@
 # Safe Exit
 
-Safe Exit is a small app for Windows made for the **EA FC** series (FC 24, FC 25, FC 26 and newer).
+Safe Exit is a small app for Windows made for the **EA FC** series (FC 27 and newer).
 
 If you match up against a cheater online, Safe Exit lets you get out of the game without it counting as a loss, so your record and your progress stay clean.
 
