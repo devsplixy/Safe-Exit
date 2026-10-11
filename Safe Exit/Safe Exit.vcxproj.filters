@@ -50,7 +50,7 @@
     <ClInclude Include="resource.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="UIPayload.h">
+    <ClInclude Include="UIPayload.stub.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

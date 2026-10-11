@@ -163,7 +163,7 @@
     <ClInclude Include="Engine.h" />
     <ClInclude Include="GameScanner.h" />
     <ClInclude Include="resource.h" />
-    <ClInclude Include="UIPayload.h" />
+    <ClInclude Include="UIPayload.stub.h" />
     <ClInclude Include="WatchDog.h" />
   </ItemGroup>
   <ItemGroup>
