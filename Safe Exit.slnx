@@ -1,0 +1,7 @@
+<Solution>
+  <Configurations>
+    <Platform Name="x64" />
+    <Platform Name="x86" />
+  </Configurations>
+  <Project Path="Safe Exit/Safe Exit.vcxproj" Id="2a7f41b5-2eb7-4b1e-8554-cf6ba2400530" />
+</Solution>
