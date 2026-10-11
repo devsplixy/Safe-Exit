@@ -29,31 +29,15 @@ If you match up against a cheater online, Safe Exit lets you get out of the game
 - **If you are not sure your opponent is a cheater, use it at your own risk.** Leaving a normal match may still count as a loss.
 - Safe Exit runs on your own PC. It never asks for your account, your passwords, or any personal information.
 
+## Disclaimer
+
+- **Do not use it against other players if you suspect cheating.** The tool was created to help fair players, but not to help someone else cheat.
+- **Do not use it if you are unsure about your opponent being a cheater.** Abandoning an ordinary game session will be considered a defeat.
+- The program works locally on your PC without requesting your account or any other private data.
+
 ## Open source
 
 This project is open source. You are welcome to read the code, learn from it, and build on it.
-
-The look of the app (the interface) is kept private and is **not** part of this repository. Everything else is included.
-
-## Disclaimer
-
-- **Do not use it against other players if you suspect cheating.** The tool was created to help fair players, but not to help someone else cheat.
-- **Do not use it if you are unsure about your opponent being a cheater.** Abandoning an ordinary game session will be considered a defeat.
-- The program works locally on your PC without requesting your account or any other private data.
-
-## Credits
-
-Created by **Splixy**.
-
-## Disclaimer
-
-- **Do not use it against other players if you suspect cheating.** The tool was created to help fair players, but not to help someone else cheat.
-- **Do not use it if you are unsure about your opponent being a cheater.** Abandoning an ordinary game session will be considered a defeat.
-- The program works locally on your PC without requesting your account or any other private data.
-
-## Open source
-
-It is an open source project. Feel free to read, learn and develop from the code.
 
 The look of the app (the interface) is kept private and is **not** part of this repository. Everything else is included.
 
