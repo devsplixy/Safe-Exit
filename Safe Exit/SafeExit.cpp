@@ -12,12 +12,15 @@
 #include <windows.h>
 #include <wrl.h>
 #include <commdlg.h>
+#include <wininet.h>
 #include <string>
 #include <vector>
 #include <set>
 #include <thread>
 #include <algorithm>
 #include <regex>
+#include <cstring>
+#include <cstdio>
 #include <cmath>
 #include <gdiplus.h>
 #include <shlobj.h>
@@ -73,7 +76,12 @@ set<string> g_SessionWhitelist;
 #define MIN_HOLD_MS 2000
 #define WM_APP_HOTKEY (WM_APP + 1)
 #define WM_APP_UI_EVENT (WM_APP + 2)
+#define SAFE_EXIT_VERSION "1.1.0"
 HHOOK g_hKeyboardHook = NULL;
+
+const char* REPO_URL = "https://github.com/devsplixy/Safe-Exit/";
+const char* RELEASES_URL = "https://github.com/devsplixy/Safe-Exit/releases/latest";
+const char* UPDATE_API = "https://api.github.com/repos/devsplixy/Safe-Exit/releases/latest";
 
 string GetConfigPath() {
     char path[MAX_PATH];
@@ -279,6 +287,81 @@ void UnregisterAppHotkeys() { if (g_hKeyboardHook) { UnhookWindowsHookEx(g_hKeyb
 void DispatchUIEvent(const string& eventName, const string& jsonPayload) {
     string* script = new string("window.onBackendEvent('" + eventName + "', " + jsonPayload + ");");
     if (!PostMessage(g_hWnd, WM_APP_UI_EVENT, 0, (LPARAM)script)) delete script;
+}
+
+static string EscapeJson(const string& value) {
+    // release names usually do not have quotes, but better safe than broken json
+    string out;
+    for (char c : value) {
+        if (c == '"' || c == '\\') { out += '\\'; out += c; }
+        else if (c == '\n') out += "\\n";
+        else if (c == '\t') out += "\\t";
+        else if (c != '\r' && (unsigned char)c >= 0x20) out += c;
+    }
+    return out;
+}
+
+static bool HttpGet(const string& url, string& body) {
+    // github wants a user agent i think, so give it one
+    HINTERNET session = InternetOpenA("SafeExit/" SAFE_EXIT_VERSION, INTERNET_OPEN_TYPE_PRECONFIG, NULL, NULL, 0);
+    if (!session) return false;
+
+    HINTERNET request = InternetOpenUrlA(session, url.c_str(), NULL, 0,
+        INTERNET_FLAG_RELOAD | INTERNET_FLAG_NO_CACHE_WRITE | INTERNET_FLAG_SECURE, 0);
+    if (!request) { InternetCloseHandle(session); return false; }
+
+    char buffer[4096];
+    DWORD read = 0;
+    while (InternetReadFile(request, buffer, sizeof(buffer), &read) && read > 0) body.append(buffer, read);
+
+    InternetCloseHandle(request);
+    InternetCloseHandle(session);
+    return !body.empty();
+}
+
+static bool IsNewerVersion(const string& latest, const string& current) {
+    int la = 0, lb = 0, lc = 0;
+    int ca = 0, cb = 0, cc = 0;
+    sscanf_s(latest.c_str(), "%d.%d.%d", &la, &lb, &lc);
+    sscanf_s(current.c_str(), "%d.%d.%d", &ca, &cb, &cc);
+
+    if (la != ca) return la > ca;
+    if (lb != cb) return lb > cb;
+    return lc > cc;
+}
+
+static void OpenExternalUrl(const char* url) {
+    wstring wide(url, url + strlen(url));
+    ShellExecuteW(NULL, L"open", wide.c_str(), NULL, NULL, SW_SHOWNORMAL);
+}
+
+static void CheckForUpdates() {
+    DispatchUIEvent("onUpdateStatus", "{\"state\":\"checking\",\"current\":\"" SAFE_EXIT_VERSION "\"}");
+
+    // do the download on a thread so the app does not freeze while waiting
+    thread([]() {
+        string body;
+        if (!HttpGet(UPDATE_API, body)) {
+            DispatchUIEvent("onUpdateStatus", "{\"state\":\"error\",\"current\":\"" SAFE_EXIT_VERSION "\",\"error\":\"Could not reach GitHub.\"}");
+            return;
+        }
+
+        smatch match;
+        if (!regex_search(body, match, regex("\"tag_name\"\\s*:\\s*\"([^\"]+)\""))) {
+            DispatchUIEvent("onUpdateStatus", "{\"state\":\"error\",\"current\":\"" SAFE_EXIT_VERSION "\",\"error\":\"Unable to read update information.\"}");
+            return;
+        }
+
+        string latest = match[1].str();
+        if (!latest.empty() && (latest[0] == 'v' || latest[0] == 'V')) latest.erase(0, 1);
+
+        string name = latest;
+        if (regex_search(body, match, regex("\"name\"\\s*:\\s*\"([^\"]*)\"")) && !match[1].str().empty()) name = match[1].str();
+
+        string state = IsNewerVersion(latest, SAFE_EXIT_VERSION) ? "available" : "current";
+        string payload = "{\"state\":\"" + state + "\",\"current\":\"" SAFE_EXIT_VERSION "\",\"latest\":\"" + EscapeJson(latest) + "\",\"name\":\"" + EscapeJson(name) + "\"}";
+        DispatchUIEvent("onUpdateStatus", payload);
+    }).detach();
 }
 
 static string WideToAcp(const wchar_t* w) {
@@ -559,8 +642,11 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
                                             smatch m; if (regex_search(msg, m, regex("\"value\":(\\d+)"))) g_TransparencyLevel = stoi(m[1].str());
                                             ApplyTransparency(); SaveSettings();
                                         }
+                                        else if (msg.find("\"action\":\"check_update\"") != string::npos) CheckForUpdates();
+                                        else if (msg.find("\"action\":\"open_repo\"") != string::npos) OpenExternalUrl(REPO_URL);
+                                        else if (msg.find("\"action\":\"open_releases\"") != string::npos) OpenExternalUrl(RELEASES_URL);
                                         else if (msg.find("\"action\":\"ready\"") != string::npos) {
-                                            string payload = "{\"bKey\":\"" + VKToEng(g_BlockKey) + "\",\"uKey\":\"" + VKToEng(g_UnblockKey) + "\",\"top\":" + (g_AlwaysOnTop ? "true" : "false") + ",\"over\":" + (g_OverlayEnabled ? "true" : "false") + ",\"timeE\":" + (g_AutoReleaseEnabled ? "true" : "false") + ",\"timeS\":" + to_string(g_AutoReleaseSeconds) + ",\"trans\":" + to_string(g_TransparencyLevel) + "}";
+                                            string payload = "{\"bKey\":\"" + VKToEng(g_BlockKey) + "\",\"uKey\":\"" + VKToEng(g_UnblockKey) + "\",\"top\":" + (g_AlwaysOnTop ? "true" : "false") + ",\"over\":" + (g_OverlayEnabled ? "true" : "false") + ",\"timeE\":" + (g_AutoReleaseEnabled ? "true" : "false") + ",\"timeS\":" + to_string(g_AutoReleaseSeconds) + ",\"trans\":" + to_string(g_TransparencyLevel) + ",\"version\":\"" SAFE_EXIT_VERSION "\",\"repo\":\"" + REPO_URL + "\",\"releases\":\"" + RELEASES_URL + "\"}";
                                             DispatchUIEvent("onLoadSettings", payload);
                                             StartTargetMonitor();
                                         }

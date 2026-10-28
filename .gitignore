@@ -1,6 +1,13 @@
 # Prerequisites
 *.d
 
+# Private UI - only ships compiled inside the exe
+Safe Exit/UIPayload.h
+Safe Exit/UIPayload.reference.html
+Safe Exit/safeExit.svg
+Safe Exit/safeExit.png
+tools/
+
 # Compiled Object files
 *.slo
 *.lo
@@ -66,3 +73,20 @@ vcpkg_installed/
 # test output & cache
 Testing/
 .cache/
+
+# visual studio build folders
+x64/
+Safe Exit/Safe Exit/
+*.tlog
+*.recipe
+*.iobj
+*.ipdb
+*.ifc
+
+# nuget stuff
+packages/
+
+# local junk
+*.bak2
+Safe Exit.zip
+Safe-Exit-main-OLD(IGNORE)/

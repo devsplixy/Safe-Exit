@@ -173,6 +173,13 @@
     <Image Include="SE_software_icon.ico" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <Target Name="GenerateUIPayload"
+          BeforeTargets="ClCompile"
+          Condition="Exists('$(ProjectDir)UIPayload.reference.html') And Exists('$(ProjectDir)..\tools\sync-ui-reference.ps1')"
+          Inputs="$(ProjectDir)UIPayload.reference.html;$(ProjectDir)..\tools\sync-ui-reference.ps1;$(ProjectDir)safeExit.svg"
+          Outputs="$(ProjectDir)UIPayload.h">
+    <Exec Command="powershell -NoProfile -ExecutionPolicy Bypass -File &quot;$(ProjectDir)..\tools\sync-ui-reference.ps1&quot; -Root &quot;$(ProjectDir)..&quot;" />
+  </Target>
   <ImportGroup Label="ExtensionTargets">
     <Import Project="..\packages\Microsoft.Web.WebView2.1.0.4258.31\build\native\Microsoft.Web.WebView2.targets" Condition="Exists('..\packages\Microsoft.Web.WebView2.1.0.4258.31\build\native\Microsoft.Web.WebView2.targets')" />
   </ImportGroup>
