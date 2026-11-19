@@ -4,13 +4,6 @@ Safe Exit is a small app for Windows made for the **EA FC** series (FC 27 and ne
 
 If you match up against a cheater online, Safe Exit lets you get out of the game without it counting as a loss, so your record and your progress stay clean.
 
-> **Only use Safe Exit when you are actually facing a cheater.**
-> If you are not sure your opponent is cheating, use it at your own risk — it may still count as a loss.
-
-## Download
-
-Grab the latest build from the [Releases page](https://github.com/devsplixy/Safe-Exit/releases/latest). Download **Safe-Exit.exe**, run it, and click **Yes** when Windows asks for permission.
-
 ## Screenshots
 
 ![Safe Exit home screen](screenshots/main.png)
@@ -46,8 +39,6 @@ The code for this project is publicly available. You are welcome to read the cod
 If you use or modify this code, you **must** give credit to the original author. You are strictly prohibited from selling or monetizing this software in any way.
 
 The look of the app (the interface) is kept private and is **not** part of this repository. Everything else is included.
-
-Because of that, if you build the project from this repo you will see a simple placeholder screen instead of the real interface. That is on purpose. The real UI is compiled into the official `.exe` and stays private.
 
 
 ## Credits
