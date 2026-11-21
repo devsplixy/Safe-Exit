@@ -43,4 +43,4 @@ The look of the app (the interface) is kept private and is **not** part of this 
 
 ## Credits
 
-Made by **Splixy AKA Fares**.
+Made by **devsplixy**.
