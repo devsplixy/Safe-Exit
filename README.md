@@ -39,8 +39,3 @@ The code for this project is publicly available. You are welcome to read the cod
 If you use or modify this code, you **must** give credit to the original author. You are strictly prohibited from selling or monetizing this software in any way.
 
 The look of the app (the interface) is kept private and is **not** part of this repository. Everything else is included.
-
-
-## Credits
-
-Made by **devsplixy**.
