@@ -1,7 +1,7 @@
 # Prerequisites
 *.d
 
-# Private UI - only ships compiled inside the exe
+# Private UI
 Safe Exit/UIPayload.h
 Safe Exit/UIPayload.reference.html
 Safe Exit/safeExit.svg
