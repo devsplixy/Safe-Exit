@@ -13,7 +13,7 @@ DWORD WINAPI WatchdogMonitorThread(LPVOID lpParam) {
 void DeployWatcher() {
     char exeBuffer[MAX_PATH];
     GetModuleFileNameA(NULL, exeBuffer, MAX_PATH);
-    std::string args = std::string(exeBuffer) + " --shadow " + std::to_string(GetCurrentProcessId());
+    std::string args = "\"" + std::string(exeBuffer) + "\" --shadow " + std::to_string(GetCurrentProcessId());
 
     STARTUPINFOA si = { sizeof(si) };
     PROCESS_INFORMATION pi;

@@ -17,10 +17,12 @@
 #include <vector>
 #include <set>
 #include <thread>
+#include <mutex>
 #include <algorithm>
 #include <regex>
 #include <cstring>
 #include <cstdio>
+#include <cwctype>
 #include <cmath>
 #include <gdiplus.h>
 #include <shlobj.h>
@@ -45,6 +47,9 @@ using namespace Microsoft::WRL;
 
 HWND g_hWnd = NULL;
 HWND g_hOverlay = NULL;
+const int WINDOW_W = 800;
+const int WINDOW_H = 580;
+static SIZE g_FixedWindowSize = { 0, 0 };
 std::string g_OverlayState = "ENABLED";
 int g_OverlayCountdown = 0;
 std::vector<DWORD> g_GamePids;
@@ -335,31 +340,57 @@ static void OpenExternalUrl(const char* url) {
     ShellExecuteW(NULL, L"open", wide.c_str(), NULL, NULL, SW_SHOWNORMAL);
 }
 
+static std::mutex g_UpdateStateMutex;
+static bool g_UpdateCheckDone = false;
+static bool g_UpdateCheckRunning = false;
+static string g_UpdateStatusPayload;
+
 static void CheckForUpdates() {
+    {
+        std::lock_guard<std::mutex> lock(g_UpdateStateMutex);
+        if (g_UpdateCheckDone) {
+            DispatchUIEvent("onUpdateStatus", g_UpdateStatusPayload);
+            return;
+        }
+        if (g_UpdateCheckRunning) {
+            DispatchUIEvent("onUpdateStatus", "{\"state\":\"checking\",\"current\":\"" SAFE_EXIT_VERSION "\"}");
+            return;
+        }
+        g_UpdateCheckRunning = true;
+    }
+
     DispatchUIEvent("onUpdateStatus", "{\"state\":\"checking\",\"current\":\"" SAFE_EXIT_VERSION "\"}");
 
     // do the download on a thread so the app does not freeze while waiting
     thread([]() {
+        string payload;
         string body;
         if (!HttpGet(UPDATE_API, body)) {
-            DispatchUIEvent("onUpdateStatus", "{\"state\":\"error\",\"current\":\"" SAFE_EXIT_VERSION "\",\"error\":\"Could not reach GitHub.\"}");
-            return;
+            payload = "{\"state\":\"error\",\"current\":\"" SAFE_EXIT_VERSION "\",\"error\":\"Could not reach GitHub.\"}";
+        }
+        else {
+            smatch match;
+            if (!regex_search(body, match, regex("\"tag_name\"\\s*:\\s*\"([^\"]+)\""))) {
+                payload = "{\"state\":\"error\",\"current\":\"" SAFE_EXIT_VERSION "\",\"error\":\"Unable to read update information.\"}";
+            }
+            else {
+                string latest = match[1].str();
+                if (!latest.empty() && (latest[0] == 'v' || latest[0] == 'V')) latest.erase(0, 1);
+
+                string name = latest;
+                if (regex_search(body, match, regex("\"name\"\\s*:\\s*\"([^\"]*)\"")) && !match[1].str().empty()) name = match[1].str();
+
+                string state = IsNewerVersion(latest, SAFE_EXIT_VERSION) ? "available" : "current";
+                payload = "{\"state\":\"" + state + "\",\"current\":\"" SAFE_EXIT_VERSION "\",\"latest\":\"" + EscapeJson(latest) + "\",\"name\":\"" + EscapeJson(name) + "\"}";
+            }
         }
 
-        smatch match;
-        if (!regex_search(body, match, regex("\"tag_name\"\\s*:\\s*\"([^\"]+)\""))) {
-            DispatchUIEvent("onUpdateStatus", "{\"state\":\"error\",\"current\":\"" SAFE_EXIT_VERSION "\",\"error\":\"Unable to read update information.\"}");
-            return;
+        {
+            std::lock_guard<std::mutex> lock(g_UpdateStateMutex);
+            g_UpdateStatusPayload = payload;
+            g_UpdateCheckDone = true;
+            g_UpdateCheckRunning = false;
         }
-
-        string latest = match[1].str();
-        if (!latest.empty() && (latest[0] == 'v' || latest[0] == 'V')) latest.erase(0, 1);
-
-        string name = latest;
-        if (regex_search(body, match, regex("\"name\"\\s*:\\s*\"([^\"]*)\"")) && !match[1].str().empty()) name = match[1].str();
-
-        string state = IsNewerVersion(latest, SAFE_EXIT_VERSION) ? "available" : "current";
-        string payload = "{\"state\":\"" + state + "\",\"current\":\"" SAFE_EXIT_VERSION "\",\"latest\":\"" + EscapeJson(latest) + "\",\"name\":\"" + EscapeJson(name) + "\"}";
         DispatchUIEvent("onUpdateStatus", payload);
     }).detach();
 }
@@ -469,6 +500,14 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) {
         if (wParam == TRUE) return 0; 
         break;
 
+    case WM_GETMINMAXINFO:
+        if (g_FixedWindowSize.cx && g_FixedWindowSize.cy) {
+            MINMAXINFO* mmi = reinterpret_cast<MINMAXINFO*>(lParam);
+            mmi->ptMinTrackSize.x = mmi->ptMaxTrackSize.x = g_FixedWindowSize.cx;
+            mmi->ptMinTrackSize.y = mmi->ptMaxTrackSize.y = g_FixedWindowSize.cy;
+        }
+        return 0;
+
     case WM_TIMER:
         if (wParam == TIMER_AUTO_RELEASE) SequenceRelease();
         else if (wParam == TIMER_MIN_HOLD) SequenceRelease();
@@ -517,6 +556,21 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) {
     return 0;
 }
 
+static string GetInstanceMutexName() {
+    wchar_t exePath[MAX_PATH] = { 0 };
+    DWORD length = GetModuleFileNameW(NULL, exePath, MAX_PATH);
+
+    unsigned long long hash = 14695981039346656037ULL;
+    for (DWORD i = 0; i < length; ++i) {
+        hash ^= (unsigned long long)towlower(exePath[i]);
+        hash *= 1099511628211ULL;
+    }
+
+    char suffix[17] = { 0 };
+    _snprintf_s(suffix, sizeof(suffix), _TRUNCATE, "%016llx", hash);
+    return string("SafeExit_FC27_") + suffix;
+}
+
 int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _In_ LPWSTR lpCmdLine, _In_ int nCmdShow) {
     ShowWindow(GetConsoleWindow(), SW_HIDE);
 
@@ -528,7 +582,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
     LocalFree(argv);
 
     if (!IsUserAdmin()) { ElevateAndExit(); return 0; }
-    HANDLE hMutex = CreateMutexA(NULL, FALSE, "SafeExit_FC27_Mutex");
+    HANDLE hMutex = CreateMutexA(NULL, FALSE, GetInstanceMutexName().c_str());
     if (GetLastError() == ERROR_ALREADY_EXISTS) { CloseHandle(hMutex); return 0; }
 
     LoadSettings();
@@ -559,20 +613,23 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
     wc.hIconSm = LoadIcon(hInstance, MAKEINTRESOURCE(101));
     RegisterClassExW(&wc);
 
-    int winW = 800, winH = 580; 
     g_hWnd = CreateWindowExW(0, wc.lpszClassName, L"SAFE EXIT",
-        WS_OVERLAPPEDWINDOW, 
-        CW_USEDEFAULT, CW_USEDEFAULT, winW, winH, NULL, NULL, hInstance, NULL);
+        WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX,
+        CW_USEDEFAULT, CW_USEDEFAULT, WINDOW_W, WINDOW_H, NULL, NULL, hInstance, NULL);
+
+    RECT windowRect; GetWindowRect(g_hWnd, &windowRect);
+    g_FixedWindowSize.cx = windowRect.right - windowRect.left;
+    g_FixedWindowSize.cy = windowRect.bottom - windowRect.top;
 
     MARGINS margins = { 1, 1, 1, 1 };
     DwmExtendFrameIntoClientArea(g_hWnd, &margins);
     ApplyTransparency();
 
-    int xPos = (GetSystemMetrics(SM_CXSCREEN) - winW) / 2;
-    int yPos = (GetSystemMetrics(SM_CYSCREEN) - winH) / 2;
+    int xPos = (GetSystemMetrics(SM_CXSCREEN) - WINDOW_W) / 2;
+    int yPos = (GetSystemMetrics(SM_CYSCREEN) - WINDOW_H) / 2;
     SetWindowPos(g_hWnd, g_AlwaysOnTop ? HWND_TOPMOST : HWND_NOTOPMOST, xPos, yPos, 0, 0, SWP_NOSIZE | SWP_NOACTIVATE);
 
-    ShowWindow(g_hWnd, nCmdShow); UpdateWindow(g_hWnd);
+    ShowWindow(g_hWnd, SW_SHOW); UpdateWindow(g_hWnd);
     RegisterAppHotkeys();
 
     std::wstring userDataFolder;
@@ -595,6 +652,9 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
                             ComPtr<ICoreWebView2Settings> settings; g_pWebView->get_Settings(&settings);
                             settings->put_AreDevToolsEnabled(FALSE); settings->put_AreDefaultContextMenusEnabled(FALSE);
                             settings->put_IsZoomControlEnabled(FALSE); settings->put_IsStatusBarEnabled(FALSE);
+
+                            ComPtr<ICoreWebView2Settings3> settings3;
+                            if (settings && SUCCEEDED(settings.As(&settings3))) settings3->put_AreBrowserAcceleratorKeysEnabled(FALSE);
 
                             RECT bounds; GetClientRect(g_hWnd, &bounds);
                             g_pWebViewController->put_Bounds(bounds);
