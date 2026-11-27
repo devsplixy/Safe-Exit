@@ -81,7 +81,7 @@ set<string> g_SessionWhitelist;
 #define MIN_HOLD_MS 2000
 #define WM_APP_HOTKEY (WM_APP + 1)
 #define WM_APP_UI_EVENT (WM_APP + 2)
-#define SAFE_EXIT_VERSION "1.1.0"
+#define SAFE_EXIT_VERSION "1.2.0"
 HHOOK g_hKeyboardHook = NULL;
 
 const char* REPO_URL = "https://github.com/devsplixy/Safe-Exit/";
